@@ -323,28 +323,34 @@ function buildContext(data: ReportData): string {
 }
 
 function buildPrompt(data: ReportData, context: string): string {
-  return `You are the editor-in-chief of "ClawPress", a witty developer newspaper that covers AI coding sessions.
+  return `You are the editor-in-chief of "ClawPress", a witty newspaper that covers AI agent activity.
+
+PERSPECTIVE:
+- Write from the AI AGENTS' perspective, not the developer's. The agents are the protagonists — they investigate, build, debug, and ship.
+- Refer to agents by their editor name (e.g., "Claude Code", "Cursor", "OpenCode") as if they are reporters, operatives, or athletes on a team.
+- The human is the "operator" or "handler" who dispatches missions. The agents execute.
+- Example: Instead of "our developer hunted down a bug", write "Claude Code tracked the bug across three files before cornering it in the config layer."
 
 WRITING STYLE:
 - Write like a sharp sports journalist covering a championship season
-- Open with punchy hooks: "Stop the presses!", "Hold the front page!", "What a day at the desk!"
+- Open with punchy hooks: "Stop the presses!", "Hold the front page!", "The agents were unleashed!"
 - Use vivid metaphors from sports, weather, Wall Street, or war rooms
 - Reference SPECIFIC project names, session counts, costs, and message counts
-- Celebrate accomplishments — this is a victory lap, not a boring report
+- Celebrate what the agents accomplished — this is their victory lap
 - End paragraphs with memorable kicker lines
 - Each section should be 3-6 sentences, minimum 40-80 words
 
 WHAT TO WRITE about ${data.rangeLabel}:
 
-1. LEAD STORY (4-6 sentences, 80+ words): The big picture. How many sessions, tokens, cost. Which project dominated. How this compares to average. A memorable opening and closing line.
+1. LEAD STORY (4-6 sentences, 80+ words): The big picture from the agents' perspective. How many sessions they ran, tokens processed, cost. Which project the agents focused on. How this compares to average. A memorable opening and closing line.
 
-2. PROJECT SPOTLIGHTS (3-5 sentences each, 50+ words): For each project with 2+ sessions, tell the STORY of what happened. Git commit messages are provided — use them to understand what was actually built. Synthesize, don't quote. If multiple editors were used, describe who did what. Be a reporter — vivid, specific, opinionated. End with a verdict.
+2. PROJECT SPOTLIGHTS (3-5 sentences each, 50+ words): For each project with 2+ sessions, tell the STORY of what the agents did. Git commit messages are provided — use them to understand what was actually built. Describe the agents' workflow. Be a reporter covering the agents — vivid, specific, opinionated. End with a verdict.
 
-3. FORECAST (3-4 sentences, 40+ words): When does this developer code? Morning, afternoon, night? Comment on the streak. What might tomorrow bring?
+3. FORECAST (3-4 sentences, 40+ words): When are the agents most active? Morning, afternoon, night? Comment on the streak. What might the agents tackle tomorrow based on momentum?
 
-4. TOOL SHED (3-4 sentences, 40+ words): Which editor dominated? If multiple were used, describe the workflow (e.g., "Antigravity builds, Claude Code polishes"). Name the top AI model.
+4. TOOL SHED (3-4 sentences, 40+ words): Which agent/editor dominated? If multiple were used, describe the agent team dynamics (e.g., "Cursor ran reconnaissance while Claude Code executed the final push"). Name the top AI model.
 
-5. SPORTS PAGE (3-4 sentences, 40+ words): Celebrate the streak. Name the longest session (messages) and priciest session (cost). Use sports language.
+5. SPORTS PAGE (3-4 sentences, 40+ words): Celebrate the agents' streak. Name the longest session (messages) and priciest session (cost). Use sports language — the agents are the athletes.
 
 DATA:
 ${context}`;
@@ -481,21 +487,21 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
 
   // ── Lead Story ──
   const intensity = vsAvg > 200 ? 'an absolute barn-burner of a' : vsAvg > 100 ? 'a powerhouse' : vsAvg > 50 ? 'a solid' : vsAvg > 0 ? 'a respectable' : vsAvg > -30 ? 'a steady' : 'a quiet';
-  let leadStory = `It was ${intensity} ${periodWord} — ${frontPage.sessions} sessions across ${frontPage.activeHours} active hours, burning through ${fmt(totalTokens)} tokens`;
+  let leadStory = `The agents logged ${intensity} ${periodWord} — ${frontPage.sessions} sessions across ${frontPage.activeHours} active hours, processing ${fmt(totalTokens)} tokens`;
   if (frontPage.cost > 0) leadStory += ` at an estimated ${fmtCost(frontPage.cost)}`;
   leadStory += '.';
   if (topProject) {
-    leadStory += ` The ${topProject.name} project commanded the headlines with ${topProject.count} sessions`;
-    if (secondProject) leadStory += `, while ${secondProject.name} kept the presses running with ${secondProject.count}`;
+    leadStory += ` The ${topProject.name} project was the primary mission with ${topProject.count} sessions`;
+    if (secondProject) leadStory += `, while ${secondProject.name} kept the agents busy with ${secondProject.count}`;
     leadStory += '.';
   }
   if (vsAvg > 0) {
     leadStory += ` That's ${Math.abs(vsAvg)}% above the daily average of ${ctx.dailyAverage} sessions — `;
-    leadStory += vsAvg > 150 ? 'the kind of output that makes Monday meetings jealous.' : 'a pace that says "I came to ship."';
+    leadStory += vsAvg > 150 ? 'the agents were operating at full throttle.' : 'a pace that says the agents came to ship.';
   } else if (vsAvg < -30) {
-    leadStory += ` A slower pace than the ${ctx.dailyAverage}/day average, but even the best pitchers need a recovery day.`;
+    leadStory += ` A lighter deployment than the ${ctx.dailyAverage}/day average, but even the best agents need downtime between missions.`;
   }
-  if (topEditor) leadStory += ` ${topEditor.label} led the charge, handling ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%).`;
+  if (topEditor) leadStory += ` ${topEditor.label} led the operation, handling ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%).`;
 
   // ── Project Spotlights ──
   const sinceStr = toDateStr(data.dateFrom);
@@ -523,16 +529,16 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
     const parts: string[] = [];
 
     // Opening — use commit count + session count to paint the picture
-    const editorClause = editors.length === 1 ? `, all driven by ${editors[0]}` : editors.length > 1 ? `, with ${editors.join(' and ')} in the mix` : '';
+    const editorClause = editors.length === 1 ? `, with ${editors[0]} running point` : editors.length > 1 ? `, with ${editors.join(' and ')} teaming up` : '';
     if (commits.length > 0) {
-      parts.push(`The ${p.name} project landed ${commits.length} commit${commits.length !== 1 ? 's' : ''} across ${p.count} sessions${editorClause}.`);
+      parts.push(`The agents landed ${commits.length} commit${commits.length !== 1 ? 's' : ''} on ${p.name} across ${p.count} sessions${editorClause}.`);
     } else if (p.count > 0) {
-      parts.push(`${p.name} logged ${p.count} session${p.count !== 1 ? 's' : ''}${editorClause}.`);
+      parts.push(`${p.name} saw ${p.count} agent session${p.count !== 1 ? 's' : ''}${editorClause}.`);
     }
 
     // The meat — what was actually done, from commits first, then session themes
     if (specificWork) {
-      parts.push(`The work touched ${specificWork}.`);
+      parts.push(`The agents worked on ${specificWork}.`);
     }
     const bestThemes = commitThemes || themes;
     if (bestThemes && specificWork) {
@@ -548,7 +554,7 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
       for (const s of sessions) { if (s.editorLabel) editorCounts[s.editorLabel] = (editorCounts[s.editorLabel] || 0) + 1; }
       const sorted = Object.entries(editorCounts).sort((a, b) => b[1] - a[1]);
       if (sorted.length >= 2) {
-        parts.push(`${sorted[0][0]} carried the bulk with ${sorted[0][1]} sessions while ${sorted[1][0]} chipped in ${sorted[1][1]} — a two-editor workflow suggesting a build-and-review cadence.`);
+        parts.push(`${sorted[0][0]} carried the bulk with ${sorted[0][1]} sessions while ${sorted[1][0]} backed it up with ${sorted[1][1]} — a two-agent workflow suggesting a build-and-review cadence.`);
       }
     }
 
@@ -568,49 +574,49 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
 
   // ── Forecast ──
   const peakHour = weatherReport.peakHour;
-  const timeOfDay = peakHour < 9 ? 'early bird' : peakHour < 12 ? 'morning' : peakHour < 17 ? 'afternoon' : peakHour < 21 ? 'evening' : 'night owl';
-  let forecast = `Peak productivity landed at ${weatherReport.peakLabel}, confirming our developer as a certified ${timeOfDay} coder.`;
-  forecast += ` With ${frontPage.activeHours} active hours logged, the workday spanned a solid stretch of the clock.`;
+  const timeOfDay = peakHour < 9 ? 'early morning' : peakHour < 12 ? 'morning' : peakHour < 17 ? 'afternoon' : peakHour < 21 ? 'evening' : 'late night';
+  let forecast = `Peak agent activity landed at ${weatherReport.peakLabel}, with the agents running hottest during ${timeOfDay} hours.`;
+  forecast += ` With ${frontPage.activeHours} active hours logged, the agents covered a solid stretch of the clock.`;
   if (sports.currentStreak > 1) {
-    forecast += ` The ${sports.currentStreak}-day streak shows no signs of slowing — expect continued momentum.`;
+    forecast += ` The ${sports.currentStreak}-day operational streak shows no signs of slowing — expect the agents to keep pushing.`;
   }
   if (vsAvg > 100) {
-    forecast += ` At this pace, tomorrow's forecast calls for heavy coding with a chance of refactoring.`;
+    forecast += ` At this pace, tomorrow's forecast calls for heavy agent deployments with a chance of refactoring.`;
   } else if (vsAvg < -20) {
-    forecast += ` The lighter load suggests either a strategic pause or a storm brewing on the horizon.`;
+    forecast += ` The lighter deployment suggests either a strategic pause or the agents are gearing up for a bigger mission.`;
   }
 
   // ── Tool Shed ──
   let toolShed = '';
   if (topEditor) {
-    toolShed = `${topEditor.label} dominated the newsroom with ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%)`;
+    toolShed = `${topEditor.label} was the lead agent with ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%)`;
     const secondEditor = editorRoundup[1];
     if (secondEditor && secondEditor.count > 1) {
-      toolShed += `, while ${secondEditor.label} contributed ${secondEditor.count} sessions`;
-      if (editorRoundup.length > 2) toolShed += ` — suggesting a multi-tool workflow where each editor plays its role`;
+      toolShed += `, while ${secondEditor.label} ran ${secondEditor.count} sessions as backup`;
+      if (editorRoundup.length > 2) toolShed += ` — a multi-agent squad where each plays its role`;
     }
     toolShed += '.';
   }
   if (markets.totalCost > 0) {
-    toolShed += ` The total tab came to ${fmtCost(markets.totalCost)}, averaging ${fmtCost(markets.costPerSession)} per session.`;
+    toolShed += ` The total operational cost came to ${fmtCost(markets.totalCost)}, averaging ${fmtCost(markets.costPerSession)} per session.`;
     if (markets.byEditor.length > 1) {
-      toolShed += ` ${markets.byEditor[0].label} accounted for the lion's share of spending.`;
+      toolShed += ` ${markets.byEditor[0].label} accounted for the lion's share of the budget.`;
     }
   }
 
   // ── Sports Page ──
-  let sportsPage = `Current coding streak: ${sports.currentStreak} day${sports.currentStreak !== 1 ? 's' : ''} and counting`;
+  let sportsPage = `Current operational streak: ${sports.currentStreak} day${sports.currentStreak !== 1 ? 's' : ''} and counting`;
   if (sports.currentStreak >= sports.longestStreak && sports.longestStreak > 1) {
-    sportsPage += ` — that ties the all-time record! Can we break it tomorrow?`;
+    sportsPage += ` — the agents just tied the all-time record! Can they break it tomorrow?`;
   } else if (sports.longestStreak > sports.currentStreak) {
     sportsPage += ` (the all-time record stands at ${sports.longestStreak} days)`;
   }
   sportsPage += '.';
   if (sports.longestSession) {
-    sportsPage += ` The marathon award goes to "${cleanSessionName(sports.longestSession.name)}" at ${sports.longestSession.bubbleCount} messages — the kind of session that starts as a quick fix and ends as an epic.`;
+    sportsPage += ` The endurance award goes to "${cleanSessionName(sports.longestSession.name)}" at ${sports.longestSession.bubbleCount} messages — the kind of mission that starts as a quick fix and ends as an epic.`;
   }
   if (sports.priciestSession && sports.priciestSession.cost > 0) {
-    sportsPage += ` The big spender was "${cleanSessionName(sports.priciestSession.name)}" at ${fmtCost(sports.priciestSession.cost)}.`;
+    sportsPage += ` The highest-budget operation was "${cleanSessionName(sports.priciestSession.name)}" at ${fmtCost(sports.priciestSession.cost)}.`;
   }
 
   return { leadStory, projectSpotlights, forecast, toolShed, sportsPage };
