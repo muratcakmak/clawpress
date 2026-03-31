@@ -1,7 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import Database from 'better-sqlite3';
+import type BetterSqlite3 from 'better-sqlite3';
+let Database: typeof BetterSqlite3 | undefined;
+try { Database = (await import('better-sqlite3')).default; } catch {}
 import type { Chat, Message } from '../types.js';
 
 const HOME: string = os.homedir();
@@ -254,8 +256,8 @@ function extractOfflineMeta(summaryProtoBytes: Uint8Array): OfflineMeta {
 }
 
 function readGlobalStateValue(key: string): string | null {
-  if (!fs.existsSync(ANTIGRAVITY_GLOBAL_STORAGE_DB)) return null;
-  let db: Database.Database | null = null;
+  if (!Database || !fs.existsSync(ANTIGRAVITY_GLOBAL_STORAGE_DB)) return null;
+  let db: BetterSqlite3.Database | null = null;
   try {
     db = new Database(ANTIGRAVITY_GLOBAL_STORAGE_DB, { readonly: true, fileMustExist: true });
     const row = db.prepare('SELECT value FROM ItemTable WHERE key = ?').get(key) as DbRow | undefined;
@@ -374,7 +376,7 @@ function getWorkspaceChats(): AntigravityChat[] {
     const dir = path.join(WORKSPACE_STORAGE_DIR, hash);
     const wsJson = path.join(dir, 'workspace.json');
     const stateDb = path.join(dir, 'state.vscdb');
-    if (!fs.existsSync(wsJson) || !fs.existsSync(stateDb)) continue;
+    if (!Database || !fs.existsSync(wsJson) || !fs.existsSync(stateDb)) continue;
     let folder: string | null = null;
     try { folder = ((JSON.parse(fs.readFileSync(wsJson, 'utf-8')) as { folder?: string }).folder || '').replace('file://', ''); } catch { continue; }
     try {

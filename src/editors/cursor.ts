@@ -1,7 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import Database from 'better-sqlite3';
+import type BetterSqlite3 from 'better-sqlite3';
+let Database: typeof BetterSqlite3 | undefined;
+try { Database = (await import('better-sqlite3')).default; } catch {}
 import type { Chat, Message, ToolCall } from '../types.js';
 
 const HOME: string = os.homedir();
@@ -85,7 +87,7 @@ function hexToString(hex: string): string {
   return str;
 }
 
-function readStoreMeta(db: Database.Database): StoreMeta | null {
+function readStoreMeta(db: BetterSqlite3.Database): StoreMeta | null {
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('0') as { value: string | Buffer } | undefined;
   if (!row) return null;
   const hex = typeof row.value === 'string' ? row.value : Buffer.from(row.value).toString('hex');
@@ -140,7 +142,7 @@ function normalizeStoreMessage(json: RawStoreMessage): Message {
   return msg;
 }
 
-function collectStoreMessages(db: Database.Database, rootBlobId: string): Message[] {
+function collectStoreMessages(db: BetterSqlite3.Database, rootBlobId: string): Message[] {
   const allMessages: Message[] = [];
   const visited = new Set<string>();
   function walk(blobId: string): void {
@@ -180,6 +182,7 @@ function getWorkspaceMap(): WorkspaceEntry[] {
 }
 
 function getComposerHeaders(stateDbPath: string): ComposerHeader[] {
+  if (!Database) return [];
   try {
     const db = new Database(stateDbPath, { readonly: true });
     const row = db.prepare("SELECT value FROM ItemTable WHERE key = 'composer.composerData'").get() as { value: string } | undefined;
@@ -203,7 +206,7 @@ function getComposerHeaders(stateDbPath: string): ComposerHeader[] {
   } catch { return []; }
 }
 
-function getComposerBubbles(globalDb: Database.Database, composerId: string): Bubble[] {
+function getComposerBubbles(globalDb: BetterSqlite3.Database, composerId: string): Bubble[] {
   const prefix = `bubbleId:${composerId}:`;
   const rows = globalDb.prepare("SELECT key, value FROM cursorDiskKV WHERE key LIKE ? ORDER BY key").all(prefix + '%') as { key: string; value: string }[];
   const bubbles: Bubble[] = [];
@@ -249,6 +252,8 @@ function bubblesToMessages(bubbles: Bubble[]): Message[] {
 export function getChats(): Chat[] {
   const chats: Chat[] = [];
 
+  if (!Database) return chats;
+
   // Source 1: agent store.db
   for (const { chatId, dbPath } of getAgentStoreChats()) {
     try {
@@ -269,7 +274,7 @@ export function getChats(): Chat[] {
   }
 
   // Source 2: workspace composers
-  let globalDb: Database.Database | null = null;
+  let globalDb: BetterSqlite3.Database | null = null;
   try { globalDb = new Database(GLOBAL_STORAGE_DB, { readonly: true }); } catch {}
 
   for (const { folder, stateDb } of getWorkspaceMap()) {
@@ -295,6 +300,7 @@ export function getChats(): Chat[] {
 }
 
 export function getMessages(chat: Chat): Message[] {
+  if (!Database) return [];
   if (chat._type === 'agent-store') {
     try {
       const db = new Database(chat._dbPath as string, { readonly: true });
@@ -307,7 +313,7 @@ export function getMessages(chat: Chat): Message[] {
     } catch { return []; }
   }
 
-  let globalDb: Database.Database;
+  let globalDb: BetterSqlite3.Database;
   try { globalDb = new Database(GLOBAL_STORAGE_DB, { readonly: true }); } catch { return []; }
   const bubbles = getComposerBubbles(globalDb, chat.composerId);
   globalDb.close();

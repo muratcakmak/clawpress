@@ -1,6 +1,6 @@
 {
   "name": "clawpress",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Newspaper-style reports for your AI coding sessions. OpenClaw edition.",
   "type": "module",
   "bin": {
@@ -32,8 +32,10 @@
   "author": "oguzhancakmak",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^11.0.0",
     "open": "^10.0.0"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

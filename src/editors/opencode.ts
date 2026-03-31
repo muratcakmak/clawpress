@@ -1,7 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import Database from 'better-sqlite3';
+import type BetterSqlite3 from 'better-sqlite3';
+let Database: typeof BetterSqlite3 | undefined;
+try { Database = (await import('better-sqlite3')).default; } catch {}
 import { Chat, Message, ToolCall } from '../types.js';
 
 const STORAGE_DIR: string = path.join(os.homedir(), '.local', 'share', 'opencode', 'storage');
@@ -46,7 +48,7 @@ interface TokenInfo {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function queryDb(sql: string): any[] {
-  if (!fs.existsSync(DB_PATH)) return [];
+  if (!Database || !fs.existsSync(DB_PATH)) return [];
   try {
     const db = new Database(DB_PATH, { readonly: true });
     const rows = db.prepare(sql).all();
@@ -210,7 +212,7 @@ function getFileMessages(sessionId: string): Message[] {
 }
 
 function getSqliteMessages(sessionId: string): Message[] {
-  if (!fs.existsSync(DB_PATH)) return [];
+  if (!Database || !fs.existsSync(DB_PATH)) return [];
   try {
     const db = new Database(DB_PATH, { readonly: true });
     const rows = db.prepare(
