@@ -1,0 +1,43 @@
+{
+  "name": "clawpress",
+  "version": "0.0.2",
+  "description": "Newspaper-style reports for your AI coding sessions. OpenClaw edition.",
+  "type": "module",
+  "bin": {
+    "clawpress": "dist/cli.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsgo && cp src/pricing.json dist/pricing.json",
+    "prepublishOnly": "npm run build",
+    "release": "bun scripts/release.ts"
+  },
+  "keywords": [
+    "ai",
+    "coding",
+    "agent",
+    "report",
+    "newspaper",
+    "openclaw",
+    "clawpress",
+    "claude",
+    "cursor",
+    "opencode",
+    "antigravity",
+    "analytics",
+    "daily-report"
+  ],
+  "author": "oguzhancakmak",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "open": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.5.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260324.1"
+  }
+}
