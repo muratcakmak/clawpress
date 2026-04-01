@@ -17,6 +17,7 @@ import type {
 import { getAllChats, getMessages, EDITOR_META } from './editors/index.js';
 import { calculateCost, normalizeModelName } from './pricing.js';
 import { generateNarratives } from './narrative.js';
+import { readIdentity } from './identity.js';
 
 /**
  * Generate a full report for the given date range.
@@ -235,7 +236,15 @@ export async function generateReport(opts: CliOpts): Promise<ReportData> {
     },
     context: { dailyAverage: Math.round(dailyAverage * 10) / 10, totalDays, allTimeTotal },
     narratives: undefined as unknown as NarrativesOutput,
+    agentIdentity: null,
   };
+
+  // Read agent identity from IDENTITY.md
+  const projectPaths = projectBeat.map(p => p.fullPath);
+  reportData.agentIdentity = readIdentity(projectPaths);
+  if (reportData.agentIdentity) {
+    console.log(`  Agent identity: ${reportData.agentIdentity.name}`);
+  }
 
   // Generate narratives via Claude Code
   console.log('  Generating narratives...');

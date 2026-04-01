@@ -236,6 +236,11 @@ function buildContext(data: ReportData): string {
   const lines: string[] = [];
   const { rangeType, rangeLabel, frontPage, editorRoundup, projectBeat, modelWatch, toolTimes, markets, weatherReport, sports, taskStories, dailyBreakdown, context } = data;
 
+  if (data.agentIdentity) {
+    const id = data.agentIdentity;
+    lines.push(`Agent Identity: ${id.name}${id.nature ? ` (${id.nature})` : ''}${id.voice ? ` — voice: ${id.voice}` : ''}`);
+    lines.push('');
+  }
   lines.push(`Period: ${rangeLabel} (${rangeType})`);
   lines.push(`Sessions: ${frontPage.sessions} | Tokens: ${fmt(frontPage.tokens.input + frontPage.tokens.output)} | Est. Cost: ${fmtCost(frontPage.cost)} | Active Hours: ${frontPage.activeHours}`);
   lines.push(`All-time: ${context.allTimeTotal} sessions over ${context.totalDays} days (avg ${context.dailyAverage}/day)`);
@@ -323,13 +328,23 @@ function buildContext(data: ReportData): string {
 }
 
 function buildPrompt(data: ReportData, context: string): string {
-  return `You are the editor-in-chief of "ClawPress", a witty newspaper that covers AI agent activity.
+  const id = data.agentIdentity;
+  const agentName = id?.name || null;
+  const agentVoice = id?.voice || null;
 
+  const identityBlock = agentName
+    ? `\nAGENT IDENTITY:
+- The primary agent's name is "${agentName}". Use this name prominently in narratives.${agentVoice ? `\n- The agent's voice/personality: ${agentVoice}. Let this color the writing tone.` : ''}
+- When the agent operates through different editors (Claude Code, Cursor, etc.), treat them as ${agentName}'s tools/vehicles, not separate agents.
+- Example: "${agentName} fired up Claude Code and tracked the bug across three files" rather than "Claude Code tracked the bug."\n`
+    : '';
+
+  return `You are the editor-in-chief of "ClawPress", a witty newspaper that covers AI agent activity.
+${identityBlock}
 PERSPECTIVE:
-- Write from the AI AGENTS' perspective, not the developer's. The agents are the protagonists — they investigate, build, debug, and ship.
-- Refer to agents by their editor name (e.g., "Claude Code", "Cursor", "OpenCode") as if they are reporters, operatives, or athletes on a team.
+- Write from the AI AGENTS' perspective, not the developer's. The agents are the protagonists — they investigate, build, debug, and ship.${agentName ? `\n- The lead agent is "${agentName}". Use this name instead of generic references like "the agents" where possible.` : `\n- Refer to agents by their editor name (e.g., "Claude Code", "Cursor", "OpenCode") as if they are reporters, operatives, or athletes on a team.`}
 - The human is the "operator" or "handler" who dispatches missions. The agents execute.
-- Example: Instead of "our developer hunted down a bug", write "Claude Code tracked the bug across three files before cornering it in the config layer."
+- Example: Instead of "our developer hunted down a bug", write "${agentName || 'Claude Code'} tracked the bug across three files before cornering it in the config layer."
 
 WRITING STYLE:
 - Write like a sharp sports journalist covering a championship season
@@ -484,10 +499,11 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
   const secondProject = projectBeat[1];
   const vsAvg = frontPage.comparisons.vsAverage;
   const totalTokens = frontPage.tokens.input + frontPage.tokens.output;
+  const agent = data.agentIdentity?.name || 'The agents';
 
   // ── Lead Story ──
   const intensity = vsAvg > 200 ? 'an absolute barn-burner of a' : vsAvg > 100 ? 'a powerhouse' : vsAvg > 50 ? 'a solid' : vsAvg > 0 ? 'a respectable' : vsAvg > -30 ? 'a steady' : 'a quiet';
-  let leadStory = `The agents logged ${intensity} ${periodWord} — ${frontPage.sessions} sessions across ${frontPage.activeHours} active hours, processing ${fmt(totalTokens)} tokens`;
+  let leadStory = `${agent} logged ${intensity} ${periodWord} — ${frontPage.sessions} sessions across ${frontPage.activeHours} active hours, processing ${fmt(totalTokens)} tokens`;
   if (frontPage.cost > 0) leadStory += ` at an estimated ${fmtCost(frontPage.cost)}`;
   leadStory += '.';
   if (topProject) {
@@ -497,11 +513,11 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
   }
   if (vsAvg > 0) {
     leadStory += ` That's ${Math.abs(vsAvg)}% above the daily average of ${ctx.dailyAverage} sessions — `;
-    leadStory += vsAvg > 150 ? 'the agents were operating at full throttle.' : 'a pace that says the agents came to ship.';
+    leadStory += vsAvg > 150 ? `${agent} ${agent === 'The agents' ? 'were' : 'was'} operating at full throttle.` : `a pace that says ${agent} came to ship.`;
   } else if (vsAvg < -30) {
-    leadStory += ` A lighter deployment than the ${ctx.dailyAverage}/day average, but even the best agents need downtime between missions.`;
+    leadStory += ` A lighter deployment than the ${ctx.dailyAverage}/day average, but even ${agent === 'The agents' ? 'the best agents need' : `${agent} needs`} downtime between missions.`;
   }
-  if (topEditor) leadStory += ` ${topEditor.label} led the operation, handling ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%).`;
+  if (topEditor) leadStory += ` ${agent === 'The agents' ? topEditor.label : agent} led the operation${agent !== 'The agents' ? ` via ${topEditor.label}` : ''}, handling ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%).`;
 
   // ── Project Spotlights ──
   const sinceStr = toDateStr(data.dateFrom);
@@ -531,14 +547,14 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
     // Opening — use commit count + session count to paint the picture
     const editorClause = editors.length === 1 ? `, with ${editors[0]} running point` : editors.length > 1 ? `, with ${editors.join(' and ')} teaming up` : '';
     if (commits.length > 0) {
-      parts.push(`The agents landed ${commits.length} commit${commits.length !== 1 ? 's' : ''} on ${p.name} across ${p.count} sessions${editorClause}.`);
+      parts.push(`${agent} landed ${commits.length} commit${commits.length !== 1 ? 's' : ''} on ${p.name} across ${p.count} sessions${editorClause}.`);
     } else if (p.count > 0) {
-      parts.push(`${p.name} saw ${p.count} agent session${p.count !== 1 ? 's' : ''}${editorClause}.`);
+      parts.push(`${p.name} saw ${p.count} session${p.count !== 1 ? 's' : ''} from ${agent}${editorClause}.`);
     }
 
     // The meat — what was actually done, from commits first, then session themes
     if (specificWork) {
-      parts.push(`The agents worked on ${specificWork}.`);
+      parts.push(`${agent} worked on ${specificWork}.`);
     }
     const bestThemes = commitThemes || themes;
     if (bestThemes && specificWork) {
@@ -575,25 +591,27 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
   // ── Forecast ──
   const peakHour = weatherReport.peakHour;
   const timeOfDay = peakHour < 9 ? 'early morning' : peakHour < 12 ? 'morning' : peakHour < 17 ? 'afternoon' : peakHour < 21 ? 'evening' : 'late night';
-  let forecast = `Peak agent activity landed at ${weatherReport.peakLabel}, with the agents running hottest during ${timeOfDay} hours.`;
-  forecast += ` With ${frontPage.activeHours} active hours logged, the agents covered a solid stretch of the clock.`;
+  let forecast = `Peak activity landed at ${weatherReport.peakLabel}, with ${agent} running hottest during ${timeOfDay} hours.`;
+  forecast += ` With ${frontPage.activeHours} active hours logged, ${agent} covered a solid stretch of the clock.`;
   if (sports.currentStreak > 1) {
-    forecast += ` The ${sports.currentStreak}-day operational streak shows no signs of slowing — expect the agents to keep pushing.`;
+    forecast += ` The ${sports.currentStreak}-day operational streak shows no signs of slowing — expect ${agent} to keep pushing.`;
   }
   if (vsAvg > 100) {
-    forecast += ` At this pace, tomorrow's forecast calls for heavy agent deployments with a chance of refactoring.`;
+    forecast += ` At this pace, tomorrow's forecast calls for heavy deployments with a chance of refactoring.`;
   } else if (vsAvg < -20) {
-    forecast += ` The lighter deployment suggests either a strategic pause or the agents are gearing up for a bigger mission.`;
+    forecast += ` The lighter deployment suggests either a strategic pause or ${agent} ${agent === 'The agents' ? 'are' : 'is'} gearing up for a bigger mission.`;
   }
 
   // ── Tool Shed ──
   let toolShed = '';
   if (topEditor) {
-    toolShed = `${topEditor.label} was the lead agent with ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%)`;
+    toolShed = agent !== 'The agents'
+      ? `${agent} ran ${topEditor.count} of ${frontPage.sessions} sessions through ${topEditor.label} (${topEditor.pct}%)`
+      : `${topEditor.label} was the lead agent with ${topEditor.count} of ${frontPage.sessions} sessions (${topEditor.pct}%)`;
     const secondEditor = editorRoundup[1];
     if (secondEditor && secondEditor.count > 1) {
-      toolShed += `, while ${secondEditor.label} ran ${secondEditor.count} sessions as backup`;
-      if (editorRoundup.length > 2) toolShed += ` — a multi-agent squad where each plays its role`;
+      toolShed += `, while ${secondEditor.label} handled ${secondEditor.count} sessions`;
+      if (editorRoundup.length > 2) toolShed += ` — a multi-tool arsenal where each plays its role`;
     }
     toolShed += '.';
   }
@@ -607,7 +625,7 @@ function fallbackNarratives(data: ReportData): NarrativesOutput {
   // ── Sports Page ──
   let sportsPage = `Current operational streak: ${sports.currentStreak} day${sports.currentStreak !== 1 ? 's' : ''} and counting`;
   if (sports.currentStreak >= sports.longestStreak && sports.longestStreak > 1) {
-    sportsPage += ` — the agents just tied the all-time record! Can they break it tomorrow?`;
+    sportsPage += ` — ${agent} just tied the all-time record! Can ${agent === 'The agents' ? 'they' : 'it'} break it tomorrow?`;
   } else if (sports.longestStreak > sports.currentStreak) {
     sportsPage += ` (the all-time record stands at ${sports.longestStreak} days)`;
   }

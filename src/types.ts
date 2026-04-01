@@ -160,6 +160,14 @@ export interface ReportData {
     allTimeTotal: number;
   };
   narratives: NarrativesOutput;
+  agentIdentity: AgentIdentity | null;
+}
+
+export interface AgentIdentity {
+  name: string;
+  nature: string | null;
+  voice: string | null;
+  emoji: string | null;
 }
 
 export interface ModelPricingEntry {

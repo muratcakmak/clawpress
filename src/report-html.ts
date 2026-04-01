@@ -427,7 +427,7 @@ export function generateHtml(data: ReportData, opts?: { light?: boolean }): stri
 <div class="page">
 
   <header class="masthead" role="banner">
-    <div class="masthead-meta"><span>Vol. I</span><span>Price: Free</span></div>
+    <div class="masthead-meta"><span>${data.agentIdentity ? `Agent: ${esc(data.agentIdentity.name)}${data.agentIdentity.emoji ? ' ' + data.agentIdentity.emoji : ''}` : 'Vol. I'}</span><span>Price: Free</span></div>
     <h1>${esc(mast.title)}</h1>
     <div class="masthead-tagline">${mast.tagline}</div>
     <div class="masthead-date">${esc(rangeLabel)} · Edition No. ${editionNumber}</div>
